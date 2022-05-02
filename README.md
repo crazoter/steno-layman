@@ -1,7 +1,8 @@
 # Stenography for the Layman
 
-An experimental python project that allows you to type like a stenographer using a QWERTY keyboard without having to learn stenography.
+An experimental python project that allows you to type like a stenographer by depressing multiple keys at once to type words using a QWERTY keyboard without having to learn stenography. in a sense, this also doubles as a typo correction system.
 - Due to the nature of the implementation, it is not limited to only QWERTY, but also to other keyboard layouts like DVORAK.
+- the implementation is somewhat technical and there is no exe yet (it's all python files).
 
 ## Motivation
 - Have you ever watched a video on someone typing 200+ WPM with stenography and went "Holy shit, I want to do that too!"?
@@ -10,7 +11,7 @@ An experimental python project that allows you to type like a stenographer using
 	- So basically, you got to relearn QWERTY, but with half the number of buttons.
 - A little more Googling and you find out that it can take approximately *3 - 6 months* to reach ~40 WPM using stenography ([src](https://didoesdigital.com/typey-type/support)). In comparison, your typing speed with a QWERTY keyboard can be from around 40-70 WPM or even higher depending on your proficiency. Aspiring stenographers spend *2 years* of their life just to learn how to type this thing (albeit graduating at a wack speed of 225 WPM).
 - What that means is that you have to spend at least 3 - 6 months learning this thing, which is not just a new keyboard layout, but also what is arguably a new language altogether, since stenography is full of shortcuts called "briefs". These shortcuts allow you to type words and phrases that aren't intuitively based on the characters you actually press.
-- Here's the thing; what if I want to type faster but don't want to spend all that money and time learning something like that? Maybe I just want instant results. Maybe you already know how to touch type on the keyboard and you're just looking to make your typing speed faster without having to go through the hassle.
+- Stenographers need that speed for transcribing text, but the layman doesn't; it's good enough if they get a small improvement, better still if you can achieve that without relearning the keyboard. Maybe you already know how to touch type on the keyboard and you're just looking to make your typing speed faster without having to go through the hassle.
 - This is a tool designed for people for you.
 
 ## Why stenography is faster
@@ -20,7 +21,7 @@ An experimental python project that allows you to type like a stenographer using
 2. Words are typed by pressing multiple buttons at once (this is called chording), or chaining these chords together for more complicated words. This means less time waiting for characters to be typed.
 3. There are *a lot* of shorthand, which allow common words to be quickly typed using a chord or two.
 
-These improvements result in a much higher typing speed, but also create a very high barrier to entry for stenography. 
+These factors result in a much higher typing speed, but also create a very high barrier to entry for stenography. 
 
 ## Borrowing ideas from stenography to make typing on QWERTY faster
 
@@ -31,10 +32,10 @@ This tool aims to provide keyboard users access to point (2). This means that we
 The idea is simple: 
 1. Allow the user to press multiple buttons on the keyboard at the same time (this will depend on whether your keyboard can support [that](https://en.wikipedia.org/wiki/Rollover_(keyboard))). The input will be scrambled. We assume that the characters of the word is all there, but scrambled. 
 2. We assume that the user wants to move on to the next word only upon pressing a space / enter / non-alphabet. 
-	1. This allows him to input more characters if necessary (e.g. multiples of the same character like "allow"), or even type the characters normally so that he can improve his pace at his own speed.
+	1. This allows him to input more characters if necessary (e.g. multiples of the same character like "allow"), or even type the characters normally so that he can improve his pace at his own speed, or even find a few optimizations on his own.
 3. What we're left with is a group of words which are unordered. This is essentially a [word unscrambling problem](https://wordunscrambler.me/). One can then unscramble the words (e.g. with [this](https://github.com/tinmarr/Word-Unscrambler)).
-4. If the unordered words form an [anagram](https://en.wikipedia.org/wiki/Anagram) (i.e. more than 1 solution), then we display a list of solutions to the user to choose from.
-6. At this stage, the tool only converts for exact matches. Inputs with typos are not handled. If there are no matches found, it will just return the input with typo as-is without any conversion (in some cases this may actually be preferred). It also has no GUI, so the options are sorted by most similar to the original input, and the closest option is returned.
+4. If the unordered words form an [anagram](https://en.wikipedia.org/wiki/Anagram) (i.e. more than 1 solution), then we display a list of solutions to the user to choose from. However, since the application does not have a GUI yet, the options are sorted by most similar to the original input (by Levenshtein distance), and the closest option is returned.
+6. At this stage, the tool only converts exact matches. Inputs with typos are not handled. If there are no matches found, it will just return the input with typo as-is without any conversion. 
 
 Supplementing the tool to provide the benefit offered by point (3) would require an auto-complete / recommender system, which is a little more involved. There are no plans to implement that as this was developed as an exploration tool.
 
