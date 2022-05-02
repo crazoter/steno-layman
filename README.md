@@ -34,7 +34,7 @@ The idea is simple:
 	1. This allows him to input more characters if necessary (e.g. multiples of the same character like "allow"), or even type the characters normally so that he can improve his pace at his own speed.
 3. What we're left with is a group of words which are unordered. This is essentially a [word unscrambling problem](https://wordunscrambler.me/). One can then unscramble the words (e.g. with [this](https://github.com/tinmarr/Word-Unscrambler)).
 4. If the unordered words form an [anagram](https://en.wikipedia.org/wiki/Anagram) (i.e. more than 1 solution), then we display a list of solutions to the user to choose from.
-6. At this stage, the tool only converts for exact matches. Inputs with typos are not handled. If there are no matches found, it will just return the input with typo as-is without any conversion (in some cases this may actually be preferred).
+6. At this stage, the tool only converts for exact matches. Inputs with typos are not handled. If there are no matches found, it will just return the input with typo as-is without any conversion (in some cases this may actually be preferred). It also has no GUI, so the options are sorted by most similar to the original input, and the closest option is returned.
 
 Supplementing the tool to provide the benefit offered by point (3) would require an auto-complete / recommender system, which is a little more involved. There are no plans to implement that as this was developed as an exploration tool.
 
