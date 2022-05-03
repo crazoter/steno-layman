@@ -160,6 +160,8 @@ def main():
     global capsLockActive
     global capitalizedArr
     global snippets
+
+    matches = []
     
     # print('on press', key)
     if (key == Key.caps_lock):
@@ -210,10 +212,18 @@ def main():
             # Get best word by Levenshtein distance
             # https://towardsdatascience.com/calculating-string-similarity-in-python-276e18a7d33a
             shortestDistance = None
+            # Tiebreak by least amount of characters added / removed
+            bestCharDist = None
             for s in matches:
-              distance = Levenshtein.distance(s, currentWord)
+              # Add length to weight (to defray costs of swap; otherwise, ti -> tit over it)
+              currCharDist = abs(len(s) - len(currentWord))
+              distance = Levenshtein.distance(s, currentWord) + currCharDist
+              if distance == shortestDistance and bestCharDist > currCharDist:
+                bestCharDist = currCharDist
+                output = s
               if shortestDistance == None or distance < shortestDistance:
                 shortestDistance = distance
+                bestCharDist = currCharDist
                 output = s
         else:
           # Output without conversion if shift + space
@@ -226,6 +236,7 @@ def main():
           output = snippets[output]
 
         outputWord(output)
+        prevInput = currentWord
         currentWord = ""
         capitalizedArr = []
         # We blocked the actual key sent, so need to send it out here 
@@ -246,7 +257,12 @@ def main():
           win32api.keybd_event(VK_CODE[char], 0, win32con.KEYEVENTF_KEYUP, EXTRA_INFO_FLAG)
 
         updateConsole(enabled, currentWord)
+        print("Previous input:", prevInput)
         print("Previous output:", output)
+        if (matches):
+          print("Found matches (unordered):", matches)
+        else:
+          print("No matches found in dictionary")
 
     if key not in heldKeys:
       heldKeys.add(key)
