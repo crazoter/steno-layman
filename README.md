@@ -1,10 +1,24 @@
 # Stenography for the Layman
 
-An experimental python project that allows you to type like a stenographer by depressing multiple keys at once to type words using a QWERTY keyboard without having to learn stenography. in a sense, this also doubles as a typo correction system.
-- Due to the nature of the implementation, it is not limited to only QWERTY, but also to other keyboard layouts like DVORAK.
+## Introduction
+This is an experimental python project that allows you to type faster and more comfortably by borrowing ideas from [stenography](https://www.youtube.com/watch?v=UA6UythLlEI).
+
+One of the reasons stenography allows you to type so much faster is because you can press multiple keys at once to form a word, as opposed to typing characters individually. However, Stenography is difficult to learn and even harder to master ([it can take approximately 3 - 6 months to reach ~40 WPM using stenography](https://didoesdigital.com/typey-type/support)) as you have to relearn the keyboard layout, steno theory, shorthands (briefs) and other concepts, and subsequently commit them to muscle memory. This means that stenography has a very high barrier to entry for the layman.
+
+The layman is familiar with QWERTY / whatever keyboard layout they use. Thus, for the layman's use-case, we should adapt some concepts from stenography without changing the layout of the keyboard to achieve faster typing speeds and better typing quality of life.
+
+In a nutshell, I am already fluent with QWERTY and I want to type faster / more comfortably. I'm too lazy to learn stenography, nor does my occupation require me to do so. Hence, I decided to make this thing.
+ 
+This project allow users to type multiple characters, even out of order. Once a user is satisfied, they can input a whitespace character. This then becomes a [word unscrambling problem](https://wordunscrambler.me/) which can be trivially unscrambled (e.g. with [this](https://github.com/tinmarr/Word-Unscrambler)) by referring to a dictionary of words. Due to the nature of the implementation, it works not only for QWERTY, but also to other keyboard layouts like DVORAK.
+- To deal with typos and anagrams, we can use [Levenshtein distance](https://en.wikipedia.org/wiki/Levenshtein_distance) and pick the option closest to the input from the user. While this means that users should not input words *entirely* out of order, it allows them to implicitly select the option they have in mind without a GUI, improving the workflow, and ultimately minimizing additional memorization to pick up the tool.
+
+Limitations:
+- The number of keys you can press simultaneously may be limited by your [keyboard hardware](https://en.wikipedia.org/wiki/Rollover_(keyboard)).
+- Windows only (can be extended to other OSes)
+- Documentation for setting up the project is limited as it's still a WIP. But app works fine
 - the implementation is somewhat technical and there is no exe yet (it's all python files).
 
-## Motivation
+## Motivation (verbose)
 - Have you ever watched a video on someone typing 200+ WPM with stenography and went "Holy shit, I want to do that too!"?
 - Perhaps in your enthusiasm you hopped onto the open source stenography project [Plover](https://github.com/openstenoproject/plover) , installed it, played around with it, and then realized something: it was hard-as-balls to use.
 	- There aren't even enough keys to fit all the alphabets of the English language onto a stenographer keyboard, so some alphabets have to be represented by multiple keys. 'L' is represented by 'HR'. 'G' is represented by 'TPKW'. And that's just the left hand, which is used for the front of the word. You have another set of things to learn for the vowels and the back of the word, and that's just the keyboard layout.
@@ -52,7 +66,7 @@ Supplementing the tool to provide the benefit offered by point (3) would require
   - ESC: Stop the program.
 - Other notes & design considerations:
 	- Pressing backspace removes previously input characters (ctrl + backspace removes the whole thing).
-- KIV:
+- KIV (unimplemented features):
 	- SHIFT + SPACE: If there is currently no ongoing word, swap the space mode. Otherwise, swaps the space mode only for the next word. 
   - capitalization management: handle & monitor the state of the shift / capslock key accordingly.
   There are the following modes:
@@ -66,5 +80,3 @@ Supplementing the tool to provide the benefit offered by point (3) would require
 - pyWinHook & pynput for monitoring and sending keypresses
 	- Installing pyWinHook requires [swig.exe](https://sourceforge.net/projects/swig/) to be in your PATH environment variable.
 - tkinter for displaying text (KIV)
-
-# 
