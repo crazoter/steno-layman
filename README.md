@@ -1,14 +1,16 @@
 # Stenography for the Layman
 
 ## Introduction
-This is an experimental python project that allows you to type faster and more comfortably by borrowing ideas from Stenography.
+This is an experimental python project that allows you to type faster and more comfortably by borrowing ideas from [stenography](https://www.youtube.com/watch?v=UA6UythLlEI).
 
-One of the reasons [stenography](https://www.youtube.com/watch?v=UA6UythLlEI) allows you to type faster by pressing multiple keys at once (this is called chording). However, Stenography is difficult to learn and even harder to master ([it can take approximately 3 - 6 months to reach ~40 WPM using stenography](https://didoesdigital.com/typey-type/support)) as you have to relearn the keyboard layout, steno theory & the shorthands (briefs). This means that Stenography has a very high barrier to entry for the layman.
+One of the reasons stenography allows you to type so much faster is because you can press multiple keys at once to form a word, as opposed to typing characters individually. However, Stenography is difficult to learn and even harder to master ([it can take approximately 3 - 6 months to reach ~40 WPM using stenography](https://didoesdigital.com/typey-type/support)) as you have to relearn the keyboard layout, steno theory, shorthands (briefs) and other concepts, and subsequently commit them to muscle memory. This means that stenography has a very high barrier to entry for the layman.
 
 The layman is familiar with QWERTY / whatever keyboard layout they use. Thus, for the layman's use-case, we should adapt some concepts from stenography without changing the layout of the keyboard to achieve faster typing speeds and better typing quality of life.
 
-This project allow users to type multiple characters, even out of order. Once a user is satisfied, they can input a whitespace character. This then becomes a [word unscrambling problem](https://wordunscrambler.me/). One can then unscramble the words (e.g. with [this](https://github.com/tinmarr/Word-Unscrambler)). Due to the nature of the implementation, it works not only for QWERTY, but also to other keyboard layouts like DVORAK.
-- To deal with typos and anagrams, we can use [Levenshtein distance](https://en.wikipedia.org/wiki/Levenshtein_distance) and pick the option closest to the input from the user. While this means that users should not input words *entirely* out of order, it allows them to implicitly select the option they have in mind without a GUI, improving the workflow.
+In a nutshell, I am already fluent with QWERTY and I want to type faster / more comfortably. I'm too lazy to learn stenography, nor does my occupation require me to do so. Hence, I decided to make this thing.
+ 
+This project allow users to type multiple characters, even out of order. Once a user is satisfied, they can input a whitespace character. This then becomes a [word unscrambling problem](https://wordunscrambler.me/) which can be trivially unscrambled (e.g. with [this](https://github.com/tinmarr/Word-Unscrambler)) by referring to a dictionary of words. Due to the nature of the implementation, it works not only for QWERTY, but also to other keyboard layouts like DVORAK.
+- To deal with typos and anagrams, we can use [Levenshtein distance](https://en.wikipedia.org/wiki/Levenshtein_distance) and pick the option closest to the input from the user. While this means that users should not input words *entirely* out of order, it allows them to implicitly select the option they have in mind without a GUI, improving the workflow, and ultimately minimizing additional memorization to pick up the tool.
 
 Limitations:
 - The number of keys you can press simultaneously may be limited by your [keyboard hardware](https://en.wikipedia.org/wiki/Rollover_(keyboard)).
