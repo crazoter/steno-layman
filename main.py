@@ -18,10 +18,10 @@ from Vkcodes import VK_CODE, VK_CODE_TO_ALPHA, SUPPRESSED_VK_CODES, VK_CODE_WHIT
 from WordUnscrambler import *
 
 class SPACING_MODE(Enum):
-  ADD_SPACE = 1
-  NO_SPACE = 2
-  CAMEL_CASE = 3
-  SNAKE_CASE = 4
+  ADD_SPACE = 1 # Default
+  CAMEL_CASE = 2
+  # SNAKE_CASE = 3 # Press the symbol you want to delimit with
+  # NO_SPACE = 4 # Press enter instead of space
 
 def findMatches(s):
   global ind
@@ -30,6 +30,7 @@ def findMatches(s):
 
 # budget gui because i'm lazy 
 def updateConsole(enabled, currentWord):
+  global capitalizedArr
   # https://stackoverflow.com/questions/4810537/how-to-clear-the-screen-in-python
   os.system('cls') # on windows
   text = ""
@@ -39,10 +40,12 @@ def updateConsole(enabled, currentWord):
   else:
     text = "DISABLED"
   print(text)
+  print(capitalizedArr)
 
 def addWordThread(evt):
   try:
     wta = str(input('What is the word you would like to add? '))
+    wta = wta.strip()
     dicopen = open("DL.txt", "a")
     dicopen.write('\n')
     dicopen.write(wta)
@@ -55,7 +58,7 @@ def addWordThread(evt):
   enabled = True
   currentWord = ""
   updateConsole(enabled, currentWord)
-  print('Dictionary Updated')
+  print('Dictionary Updated.')
   evt.set()
   return
 
@@ -66,6 +69,9 @@ def main():
   global heldKeys
   global enabled
   global isAddingWord
+  global capsLockActive
+  global capitalizedArr
+  global addWordEvent
 
   # Initialize dictionary
   d = GetDic()
@@ -80,7 +86,9 @@ def main():
   enabled = True
   isAddingWord = False
   currentWord = ""
-  currentCapitalizationOrder = []
+  capsLockActive = False
+  # Note that this is not exact for spellchecked words.
+  capitalizedArr = []
   currentSpacingMode = SPACING_MODE.ADD_SPACE
 
   def keyIsWhitespace(key):
@@ -96,36 +104,75 @@ def main():
       Key.cmd not in heldKeys)
 
   def outputWord(word):
+    global capitalizedArr 
+    global capsLockActive
+    global heldKeys
+    idx = 0
+    word = word.lower()
     for c in word:
+      if idx >= len (capitalizedArr):
+        idx = 0
+
+      # Use shift based on state of capslock
+      shiftKeysPressed = Key.shift in heldKeys or Key.shift_r in heldKeys
+
+      if capitalizedArr[idx] != capsLockActive:
+        win32api.keybd_event(VK_CODE['left_shift'], 0, 0, EXTRA_INFO_FLAG)
+      elif not capitalizedArr[idx] and shiftKeysPressed:
+        win32api.keybd_event(VK_CODE['left_shift'], 0, win32con.KEYEVENTF_KEYUP, EXTRA_INFO_FLAG)
+        win32api.keybd_event(VK_CODE['right_shift'], 0, win32con.KEYEVENTF_KEYUP, EXTRA_INFO_FLAG)
+
       win32api.keybd_event(VK_CODE[c], 0, 0, EXTRA_INFO_FLAG)
       win32api.keybd_event(VK_CODE[c], 0, win32con.KEYEVENTF_KEYUP, EXTRA_INFO_FLAG)
+
+      if capitalizedArr[idx] != capsLockActive:
+        win32api.keybd_event(VK_CODE['left_shift'], 0, win32con.KEYEVENTF_KEYUP, EXTRA_INFO_FLAG)
+      # Re-inputting the shift keys causes issues, so I'll omit it for now
+      # elif not capitalizedArr[idx] and shiftKeysPressed:
+      #   win32api.keybd_event(VK_CODE['left_shift'], 0, 0, EXTRA_INFO_FLAG)
+      #   win32api.keybd_event(VK_CODE['right_shift'], 0, 0, EXTRA_INFO_FLAG)
+
+      idx += 1
 
   def on_press(key):
     global heldKeys
     global currentWord
+    global capsLockActive
+    global capitalizedArr
     
     # print('on press', key)
-    if key == Key.backspace and len(currentWord) > 0:
+    if (key == Key.caps_lock):
+      # May want to improve with
+      # https://stackoverflow.com/questions/34028478/python-3-detect-caps-lock-status
+      capsLockActive = not capsLockActive
+    elif key == Key.backspace and len(currentWord) > 0:
+      # Delete the previous char in the buffer
       if (Key.ctrl_l not in heldKeys and 
       Key.ctrl_r not in heldKeys):
         currentWord = currentWord[:-1]
+        capitalizedArr = capitalizedArr[:-1]
       else:
         currentWord = ""
+        capitalizedArr = []
       updateConsole(enabled, currentWord)
     elif noCmdKeyIsHeld(heldKeys):
       # Ignore special command strokes
       char = str(key)[1:-1]
       if len(char) == 1 and char.isalpha():
+        # Add character
         currentWord += char
+        # Add capitalization
+        capitalizedArr.append(capsLockActive or Key.shift in heldKeys or Key.shift_r in heldKeys)
+
         updateConsole(enabled, currentWord)
       elif len(currentWord) > 0 and (
         keyIsWhitespace(key) or 
         (len(char) == 1 and not char.isalpha())
       ):
         output = None
+        # Perform conversion if shift is not held on whitespace
         if (Key.shift not in heldKeys and Key.shift_r not in heldKeys):
           matches = findMatches(currentWord)
-
           # print(currentWord, "matches", matches)
           # Perform minor typo fix checks
           # Amortized O(n)
@@ -151,17 +198,29 @@ def main():
           # Output without conversion if shift + space
           output = currentWord
 
+        leftShift = Key.shift in heldKeys
+        rightShift = Key.shift_r in heldKeys
+
         outputWord(output)
         currentWord = ""
+        capitalizedArr = []
         # We blocked the actual key sent, so need to send it out here 
         if (key == Key.space):
           char = "spacebar"
         elif (key == Key.tab):
           char = "tab"
         elif (key == Key.enter):
-          char = "enter"
-        win32api.keybd_event(VK_CODE[char], 0, 0, EXTRA_INFO_FLAG)
-        win32api.keybd_event(VK_CODE[char], 0, win32con.KEYEVENTF_KEYUP, EXTRA_INFO_FLAG)
+          # Just send as-is without anything behind if pressed enter
+          char = None
+        if char:
+          if (leftShift):
+            win32api.keybd_event(VK_CODE['left_shift'], 0, 0, EXTRA_INFO_FLAG)
+          if (rightShift):
+            win32api.keybd_event(VK_CODE['right_shift'], 0, 0, EXTRA_INFO_FLAG)
+
+          win32api.keybd_event(VK_CODE[char], 0, 0, EXTRA_INFO_FLAG)
+          win32api.keybd_event(VK_CODE[char], 0, win32con.KEYEVENTF_KEYUP, EXTRA_INFO_FLAG)
+
         updateConsole(enabled, currentWord)
         print("Previous output:", output)
 
@@ -196,11 +255,7 @@ def main():
       # Reset dict
       d = GetDic()
       ind = Ints2Dic(d)
-      # Clear the old command flags (shift and ctrl)
-      win32api.keybd_event(0xA0, 0, win32con.KEYEVENTF_KEYUP, 0)
-      win32api.keybd_event(0xA1, 0, win32con.KEYEVENTF_KEYUP, 0)
-      win32api.keybd_event(0xA2, 0, win32con.KEYEVENTF_KEYUP, 0)
-      win32api.keybd_event(0xA3, 0, win32con.KEYEVENTF_KEYUP, 0)
+      print('Reloading dictionary...')
       enabled = True
       isAddingWord = False
 
@@ -217,16 +272,27 @@ def main():
       # Add new word using shift ctrl space
       enabled = False
       isAddingWord = True
+      # Clear the old command flags (shift and ctrl)
+      win32api.keybd_event(0xA0, 0, win32con.KEYEVENTF_KEYUP, 0)
+      win32api.keybd_event(0xA1, 0, win32con.KEYEVENTF_KEYUP, 0)
+      win32api.keybd_event(0xA2, 0, win32con.KEYEVENTF_KEYUP, 0)
+      win32api.keybd_event(0xA3, 0, win32con.KEYEVENTF_KEYUP, 0)
       # p = subprocess.call(["py", "./addWord.py"], creationflags=subprocess.CREATE_NEW_CONSOLE)
       addWordEvent=Event()
       thread = Thread(target = addWordThread, args = (addWordEvent, ))
       thread.start()
-    elif msg == 256 and data.vkCode == VK_CODE['spacebar'] and (Key.shift in heldKeys or Key.shift_r in heldKeys):
+    elif msg == 256 and data.vkCode == VK_CODE['spacebar'] and (
+      Key.shift in heldKeys or Key.shift_r in heldKeys
+    ):
       # Toggle functionality using shift space
-      # If currentWord is not empty, then spit it out without conversion
-      enabled = not enabled
+      # If currentWord is not empty:
+      # shift space: then spit it out without conversion
+      # shift enter: spit it out without conversion or adding a new space
+      # Otherwise, shift space disables the tool
+      if len(currentWord) <= 0:
+        enabled = not enabled
       updateConsole(enabled, currentWord)
-      listener._suppress = False
+      listener._suppress = True
     elif msg == 256 and (data.vkCode == VK_CODE['backspace'] or data.vkCode in SUPPRESSED_VK_CODES) and len(currentWord) > 0:
       # Suppress output if backspace or triggerring unscrambling process
       listener._suppress = True
