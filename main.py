@@ -13,20 +13,74 @@ import win32.lib.win32con as win32con
 from pynput.keyboard import Key, KeyCode, Listener, Controller
 
 import Levenshtein
+from thefuzz import process as FuzzProcess
 
 from Vkcodes import VK_CODE, VK_CODE_TO_ALPHA, SUPPRESSED_VK_CODES, VK_CODE_WHITESPACE
 from WordUnscrambler import *
 
+class SEARCH_ALGORITHM(Enum):
+  UNSCRAMBLER = 1
+  THE_FUZZ = 2
+
+CURRENT_SEARCH_ALGORITHM = SEARCH_ALGORITHM.UNSCRAMBLER
+
 class SPACING_MODE(Enum):
   ADD_SPACE = 1 # Default
   CAMEL_CASE = 2
-  # SNAKE_CASE = 3 # Press the symbol you want to delimit with
-  # NO_SPACE = 4 # Press enter instead of space
+  SNAKE_CASE = 3
+  NO_SPACE = 4
+  AUTO_CAPITAL = 5
+  NLP = 6 # Spellcheck & recommendation using NLP 
 
-def findMatches(s):
+def findMatchesByUnscramble(s):
   global ind
   v = Vect2Int(Word2Vect(s))
   return ind.get(v, [])
+
+def searchByUnscramble(s):
+  matches = findMatchesByUnscramble(currentWord)
+  output = ""
+  # print(currentWord, "matches", matches)
+  # Perform minor typo fix checks
+  # Amortized O(n)
+  for i in range(len(currentWord)):
+    # Try duplicating the character at the same position
+    matches = matches + findMatchesByUnscramble(currentWord[:i] + currentWord[i] + currentWord[i:])
+    # Try removing the character 
+    matches = matches + findMatchesByUnscramble(currentWord[0:i] + currentWord[i+1:])
+    
+  # If still can't find anything just return the word as-is
+  if (len(matches) == 0):
+    output = s
+  else:
+    # Get best word by Levenshtein distance
+    # https://towardsdatascience.com/calculating-string-similarity-in-python-276e18a7d33a
+    shortestDistance = None
+    # Tiebreak by least amount of characters added / removed
+    bestCharDist = None
+    for s in matches:
+      # Add length to weight (to defray costs of swap; otherwise, ti -> tit over it)
+      currCharDist = abs(len(s) - len(currentWord))
+      distance = Levenshtein.distance(s, currentWord) + currCharDist
+      if distance == shortestDistance and bestCharDist > currCharDist:
+        bestCharDist = currCharDist
+        output = s
+      if shortestDistance == None or distance < shortestDistance:
+        shortestDistance = distance
+        bestCharDist = currCharDist
+        output = s
+  return (matches, output)
+
+def searchByTheFuzz(s):
+  global d
+  matches = FuzzProcess.extract(s, d, limit = 3)
+  return (matches, matches[0][0])
+
+def findMatchesAndWord(s):
+  if CURRENT_SEARCH_ALGORITHM == SEARCH_ALGORITHM.UNSCRAMBLER:
+    return searchByUnscramble(s)
+  if CURRENT_SEARCH_ALGORITHM == SEARCH_ALGORITHM.THE_FUZZ:
+    return searchByTheFuzz(s)
 
 def GetSnippets():
   try:
@@ -61,7 +115,7 @@ def updateConsole(enabled, currentWord):
 
 def addWordThread(evt):
   try:
-    wta = str(input('What is the word you would like to add? '))
+    wta = str(input('What is the word you would like to add?auto (CTRL+C to cancel) '))
     wta = wta.strip().lower()
     dicopen = open("DL.txt", "a")
     dicopen.write('\n')
@@ -69,6 +123,7 @@ def addWordThread(evt):
     dicopen.close()
   except BaseException as e:
     # KeyboardInterrupt alone didn't work
+    print("Cancelling operation...")
     pass
 
   # Tell main thread that it's done
@@ -82,6 +137,7 @@ def addWordThread(evt):
 def main():
   global listener
   global currentWord
+  global d
   global ind
   global heldKeys
   global enabled
@@ -195,36 +251,7 @@ def main():
         output = None
         # Perform conversion if shift is not held on whitespace
         if (Key.shift not in heldKeys and Key.shift_r not in heldKeys):
-          matches = findMatches(currentWord)
-          # print(currentWord, "matches", matches)
-          # Perform minor typo fix checks
-          # Amortized O(n)
-          for i in range(len(currentWord)):
-            # Try duplicating the character 
-            matches = matches + findMatches(currentWord[:i] + currentWord[i] + currentWord[i:])
-            # Try removing the character 
-            matches = matches + findMatches(currentWord[0:i] + currentWord[i+1:])
-            
-          # If still can't find anything just return the word as-is
-          if (len(matches) == 0):
-            output = currentWord
-          else:
-            # Get best word by Levenshtein distance
-            # https://towardsdatascience.com/calculating-string-similarity-in-python-276e18a7d33a
-            shortestDistance = None
-            # Tiebreak by least amount of characters added / removed
-            bestCharDist = None
-            for s in matches:
-              # Add length to weight (to defray costs of swap; otherwise, ti -> tit over it)
-              currCharDist = abs(len(s) - len(currentWord))
-              distance = Levenshtein.distance(s, currentWord) + currCharDist
-              if distance == shortestDistance and bestCharDist > currCharDist:
-                bestCharDist = currCharDist
-                output = s
-              if shortestDistance == None or distance < shortestDistance:
-                shortestDistance = distance
-                bestCharDist = currCharDist
-                output = s
+          matches, output = findMatchesAndWord(currentWord)
         else:
           # Output without conversion if shift + space
           output = currentWord
