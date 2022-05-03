@@ -1,0 +1,8 @@
+dont:don't
+doesnt:doesn't
+wont:won't
+cant:can't
+shouldnt:shouldn't
+wouldnt:wouldn't
+couldnt:couldn't
+youre:you're

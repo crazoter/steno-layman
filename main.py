@@ -28,7 +28,24 @@ def findMatches(s):
   v = Vect2Int(Word2Vect(s))
   return ind.get(v, [])
 
-# budget gui because i'm lazy 
+def GetSnippets():
+  try:
+    dicopen = open("snippets.txt", "r")
+    dicraw = dicopen.read()
+    dicopen.close()
+    diclist = dicraw.split("\n")
+    diclist = RemoveFromList(diclist, '')
+    snippets = {}
+    for s in diclist:
+      delimIdx = s.find(":")
+      if (delimIdx > 0 and len(s[delimIdx+1:]) > 0):
+        snippets[s[0:delimIdx]] = s[delimIdx+1:]
+    return snippets
+  except FileNotFoundError:
+    print("No Snippets!")
+    return {}
+
+# Budget gui because i'm lazy 
 def updateConsole(enabled, currentWord):
   global capitalizedArr
   # https://stackoverflow.com/questions/4810537/how-to-clear-the-screen-in-python
@@ -45,7 +62,7 @@ def updateConsole(enabled, currentWord):
 def addWordThread(evt):
   try:
     wta = str(input('What is the word you would like to add? '))
-    wta = wta.strip()
+    wta = wta.strip().lower()
     dicopen = open("DL.txt", "a")
     dicopen.write('\n')
     dicopen.write(wta)
@@ -72,10 +89,13 @@ def main():
   global capsLockActive
   global capitalizedArr
   global addWordEvent
+  global snippets
 
   # Initialize dictionary
   d = GetDic()
   ind = Ints2Dic(d)
+
+  snippets = GetSnippets()
 
   addWordEvent = Event()
 
@@ -139,6 +159,7 @@ def main():
     global currentWord
     global capsLockActive
     global capitalizedArr
+    global snippets
     
     # print('on press', key)
     if (key == Key.caps_lock):
@@ -200,6 +221,9 @@ def main():
 
         leftShift = Key.shift in heldKeys
         rightShift = Key.shift_r in heldKeys
+
+        if output and snippets and output in snippets:
+          output = snippets[output]
 
         outputWord(output)
         currentWord = ""

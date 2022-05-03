@@ -80,3 +80,8 @@ Supplementing the tool to provide the benefit offered by point (3) would require
 - pyWinHook & pynput for monitoring and sending keypresses
 	- Installing pyWinHook requires [swig.exe](https://sourceforge.net/projects/swig/) to be in your PATH environment variable.
 - tkinter for displaying text (KIV)
+
+## Syntax of `snippets.txt`
+- `word:{snippet}`
+- `word` is an exact match from the `DL.txt` file.
+- snippets do not allow for new lines, but you can put whatever symbol you want.
