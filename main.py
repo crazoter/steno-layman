@@ -81,7 +81,7 @@ def main():
   isAddingWord = False
   currentWord = ""
   currentCapitalizationOrder = []
-  currentSpacingMode = 
+  currentSpacingMode = SPACING_MODE.ADD_SPACE
 
   def keyIsWhitespace(key):
     return (key == Key.space or 
