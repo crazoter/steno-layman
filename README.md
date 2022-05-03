@@ -53,7 +53,9 @@ Supplementing the tool to provide the benefit offered by point (3) would require
 - Other notes & design considerations:
 	- Pressing backspace removes previously input characters (ctrl + backspace removes the whole thing).
 - KIV:
-	- SHIFT + SPACE: If there is currently no ongoing word, swap the space mode. Otherwise, swaps the space mode only for the next word. There are the following modes:
+	- SHIFT + SPACE: If there is currently no ongoing word, swap the space mode. Otherwise, swaps the space mode only for the next word. 
+  - capitalization management: handle & monitor the state of the shift / capslock key accordingly.
+  There are the following modes:
 		- Add space (default): Pressing space will trigger the unscrambling process. Afterwhich, a space is added to the end of the word.
 		- No spacing: Pressing space will trigger the unscrambling process. Afterwhich, no space is added to the end of the word.
     - If the word is an anagram, the shown options will be selectable by alphabets instead of numbers (to reduce hand movement). These options are sorted based their similarity to the original input.
@@ -64,3 +66,5 @@ Supplementing the tool to provide the benefit offered by point (3) would require
 - pyWinHook & pynput for monitoring and sending keypresses
 	- Installing pyWinHook requires [swig.exe](https://sourceforge.net/projects/swig/) to be in your PATH environment variable.
 - tkinter for displaying text (KIV)
+
+# 
