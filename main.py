@@ -1,9 +1,10 @@
 import tk
-
 import sys
 import os
+from timeit import default_timer as timer
 from threading import Thread,Event
 from enum import Enum
+from collections import deque
 
 # https://stackoverflow.com/questions/62854319/how-to-make-pynput-prevent-certain-keystrokes-from-reaching-a-particular-applica
 # https://gist.github.com/chriskiehl/2906125
@@ -21,6 +22,7 @@ from WordUnscrambler import *
 class SEARCH_ALGORITHM(Enum):
   UNSCRAMBLER = 1
   THE_FUZZ = 2
+  CLUSTERING_ONLY = 3
 
 CURRENT_SEARCH_ALGORITHM = SEARCH_ALGORITHM.UNSCRAMBLER
 
@@ -32,23 +34,102 @@ class SPACING_MODE(Enum):
   AUTO_CAPITAL = 5
   NLP = 6 # Spellcheck & recommendation using NLP 
 
-def findMatchesByUnscramble(s):
-  global ind
-  v = Vect2Int(Word2Vect(s))
-  return ind.get(v, [])
+MAX_SEARCH_DEPTH = 3
+MAX_DUPE_CHARS = 8
+
+def getCharsSortedByFrequency():
+  CHARS = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
+  # https://en.wikipedia.org/wiki/Letter_frequency
+  FREQUENCY_IN_DICTIONARY = [7.8,2,4,3.8,11,1.4,3,2.3,8.6,0.21,0.97,5.3,2.7,7.2,6.1,2.8,0.19,7.3,8.7,6.7,3.3,1,0.91,0.27,1.6,0.44]
+  tmp = list(zip(CHARS,FREQUENCY_IN_DICTIONARY))
+  tmp.sort(key=lambda t: t[1], reverse=True)
+  return list(zip(*tmp))[0]
+
+CHARS_BY_FREQUENCY = getCharsSortedByFrequency()
+
+def bfsBinSearch(ind, firstNum, firstDepth):
+  # BFS to ensure when we visit a permutation, it's with the shortest path
+  matches = set(ind.get(firstNum, []))
+  traversed = set([firstNum])
+  q = deque([(firstNum, firstDepth)])
+  while len(q) > 0:
+    currNum, depth = q.pop()
+    for i in range(NUMBER_OF_ALPHABETS):
+      if bitmaskNum(currNum, i, True) < MAX_DUPE_CHARS:
+        newNum = ModifyInt(currNum, i, 1)
+        if depth > 0 and newNum not in traversed:
+          traversed.add(newNum)
+          result = ind.get(newNum)
+          if result:
+            matches.update(result)
+          q.append((newNum, depth - 1))
+      if bitmaskNum(currNum, i, False) > 0:
+        newNum = ModifyInt(currNum, i, -1)
+        if depth > 0 and newNum not in traversed:
+          traversed.add(newNum)
+          result = ind.get(newNum)
+          if result:
+            matches.update(result)
+          q.append((newNum, depth - 1))
+  return matches
 
 def searchByUnscramble(s):
-  matches = findMatchesByUnscramble(currentWord)
-  output = ""
+  global ind
   # print(currentWord, "matches", matches)
   # Perform minor typo fix checks
   # Amortized O(n)
-  for i in range(len(currentWord)):
-    # Try duplicating the character at the same position
-    matches = matches + findMatchesByUnscramble(currentWord[:i] + currentWord[i] + currentWord[i:])
-    # Try removing the character 
-    matches = matches + findMatchesByUnscramble(currentWord[0:i] + currentWord[i+1:])
-    
+  # Possible Optimizations:
+  # Don't vect2int the whole array
+  # Perform the search on the matched array instead of concat then search whole array
+  # Early terminate
+  # Remove excess characters 
+  currV = Word2Vect(currentWord)
+  currNum = Vect2Int(currV)
+  output = ""
+  matches = bfsBinSearch(ind, currNum, 3)
+
+  # # Optimizations: perform the search without having to rebuild the vector
+  # # Possible Heuristics:
+  # # Only add existing characters
+  # # Only remove characters
+  # # First iteration: basic check (26+26)
+  # for i in range(len(currV)):
+  #   matches.update(ind.get(ModifyInt(currNum, i, 1), []))
+  #   if (currV[i] > 0):
+  #     matches.update(ind.get(ModifyInt(currNum, i, -1), []))
+
+  # # Second iteration: 2 depth search (26^2 *4)
+  # if (len(matches) == 0):
+  #   for i in range(len(currV)):
+  #     currV[i] += 1
+  #     tmpNum = ModifyInt(currNum, i, 1)
+  #     for j in range(len(currV)):
+  #       if (currV[j] >= MAX_DUPE_CHARS):
+  #         continue
+  #       # Add 2
+  #       matches.update(ind.get(ModifyInt(tmpNum, i, 1), []))
+  #       if (i == j or currV[j] <= 0):
+  #         continue
+  #       # Add 1 subtract 1
+  #       matches.update(ind.get(ModifyInt(tmpNum, i, -1), []))
+  #     if i <= 0:
+  #       continue
+  #     currV[i] -= 1
+  #     tmpNum = ModifyInt(currNum, i, -1)
+  #     for j in range(len(currV)):
+  #       if (currV[j] <= 0):
+  #         continue
+  #       # Subtract 2
+  #       matches.update(ind.get(ModifyInt(tmpNum, i, -1), []))
+  #       if (i == j or currV[j] >= MAX_DUPE_CHARS):
+  #         continue
+  #       # Subtract 1 add 1
+  #       matches.update(ind.get(ModifyInt(tmpNum, i, 1), []))
+
+  # # Use clustering for deeper search
+  # if (len(matches) == 0):
+  #   matches = transformWordIntoCluster(currentWord)
+
   # If still can't find anything just return the word as-is
   if (len(matches) == 0):
     output = s
@@ -75,12 +156,40 @@ def searchByTheFuzz(s):
   global d
   matches = FuzzProcess.extract(s, d, limit = 3)
   return (matches, matches[0][0])
+def searchByClusteringOnly(currentWord):
+  matches = transformWordIntoCluster(currentWord)
+  # Get best word by Levenshtein distance
+  output = None
+  shortestDistance = None
+  # Tiebreak by least amount of characters added / removed
+  bestCharDist = None
+  for s in matches:
+    # Add length to weight (to defray costs of swap; otherwise, ti -> tit over it)
+    currCharDist = abs(len(s) - len(currentWord))
+    distance = Levenshtein.distance(s, currentWord) + currCharDist
+    if distance == shortestDistance and bestCharDist > currCharDist:
+      bestCharDist = currCharDist
+      output = s
+    if shortestDistance == None or distance < shortestDistance:
+      shortestDistance = distance
+      bestCharDist = currCharDist
+      output = s
+  return (matches, output)
 
 def findMatchesAndWord(s):
+  global timeTaken
+  # dirty but lazy
+  start = timer()
+  result = None
   if CURRENT_SEARCH_ALGORITHM == SEARCH_ALGORITHM.UNSCRAMBLER:
-    return searchByUnscramble(s)
+    result = searchByUnscramble(s)
   if CURRENT_SEARCH_ALGORITHM == SEARCH_ALGORITHM.THE_FUZZ:
-    return searchByTheFuzz(s)
+    result = searchByTheFuzz(s)
+  if CURRENT_SEARCH_ALGORITHM == SEARCH_ALGORITHM.CLUSTERING_ONLY:
+    result = searchByClusteringOnly(s)
+  end = timer()
+  timeTaken = end - start
+  return result
 
 def GetSnippets():
   try:
@@ -102,6 +211,7 @@ def GetSnippets():
 # Budget gui because i'm lazy 
 def updateConsole(enabled, currentWord):
   global capitalizedArr
+  global timeTaken
   # https://stackoverflow.com/questions/4810537/how-to-clear-the-screen-in-python
   os.system('cls') # on windows
   text = ""
@@ -112,6 +222,7 @@ def updateConsole(enabled, currentWord):
     text = "DISABLED"
   print(text)
   print(capitalizedArr)
+  print("Time (s):", timeTaken)
 
 def addWordThread(evt):
   try:
@@ -134,11 +245,18 @@ def addWordThread(evt):
   evt.set()
   return
 
+def initDict():
+  global d
+  global ind
+
+  print('Preparing the dictionary...')
+  d = GetDic()
+  ind = Ints2Dic(d)
+  # c = dic2Cluster(d)
+
 def main():
   global listener
   global currentWord
-  global d
-  global ind
   global heldKeys
   global enabled
   global isAddingWord
@@ -146,10 +264,12 @@ def main():
   global capitalizedArr
   global addWordEvent
   global snippets
+  global timeTaken
+
+  timeTaken = 0
 
   # Initialize dictionary
-  d = GetDic()
-  ind = Ints2Dic(d)
+  initDict()
 
   snippets = GetSnippets()
 
@@ -226,20 +346,21 @@ def main():
       capsLockActive = not capsLockActive
     elif key == Key.backspace and len(currentWord) > 0:
       # Delete the previous char in the buffer
-      if (Key.ctrl_l not in heldKeys and 
-      Key.ctrl_r not in heldKeys):
-        currentWord = currentWord[:-1]
-        capitalizedArr = capitalizedArr[:-1]
-      else:
-        currentWord = ""
-        capitalizedArr = []
+      # if (Key.ctrl_l not in heldKeys and 
+      # Key.ctrl_r not in heldKeys):
+      #   currentWord = currentWord[:-1]
+      #   capitalizedArr = capitalizedArr[:-1]
+      # else:
+      # Just delete the full word
+      currentWord = ""
+      capitalizedArr = []
       updateConsole(enabled, currentWord)
     elif noCmdKeyIsHeld(heldKeys):
       # Ignore special command strokes
       char = str(key)[1:-1]
       if len(char) == 1 and char.isalpha():
         # Add character
-        currentWord += char
+        currentWord += char.lower()
         # Add capitalization
         capitalizedArr.append(capsLockActive or Key.shift in heldKeys or Key.shift_r in heldKeys)
 
@@ -296,12 +417,18 @@ def main():
 
   def on_release(key):
     global heldKeys
+    global enabled
     # print('on release', key)
     if key in heldKeys:
       heldKeys.remove(key)
     if key == Key.esc:
-      # Exit
-      return False
+      if (Key.shift in heldKeys or 
+      Key.shift_r in heldKeys):
+        # Exit
+        return False
+      else:
+        enabled = not enabled
+        updateConsole(enabled, currentWord)
 
   EXTRA_INFO_FLAG = 1
   # https://docs.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-kbdllhookstruct
@@ -320,9 +447,7 @@ def main():
     # put into another thread for responsiveness.
     if isAddingWord and addWordEvent.is_set():
       # Reset dict
-      d = GetDic()
-      ind = Ints2Dic(d)
-      print('Reloading dictionary...')
+      initDict()
       enabled = True
       isAddingWord = False
 
@@ -356,9 +481,9 @@ def main():
       # shift space: then spit it out without conversion
       # shift enter: spit it out without conversion or adding a new space
       # Otherwise, shift space disables the tool
-      if len(currentWord) <= 0:
-        enabled = not enabled
-      updateConsole(enabled, currentWord)
+      # if len(currentWord) <= 0:
+      #   enabled = not enabled
+      # updateConsole(enabled, currentWord)
       listener._suppress = True
     elif msg == 256 and (data.vkCode == VK_CODE['backspace'] or data.vkCode in SUPPRESSED_VK_CODES) and len(currentWord) > 0:
       # Suppress output if backspace or triggerring unscrambling process

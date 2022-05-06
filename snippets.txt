@@ -1,3 +1,4 @@
+isnt:isn't
 dont:don't
 doesnt:doesn't
 wont:won't
