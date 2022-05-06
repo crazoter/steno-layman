@@ -1,7 +1,7 @@
 # Stenography for the Layman
 
 ## Introduction
-This is an experimental python project that allows you to type faster and more comfortably by borrowing ideas from [stenography](https://www.youtube.com/watch?v=UA6UythLlEI).
+This is an experimental python project that allows you to type faster and more comfortably by borrowing ideas from [stenography](https://www.youtube.com/watch?v=UA6UythLlEI). Over time it also transitioned into a realtime spellchecking tool using a local dictionary modifiable by the user.
 
 One of the reasons stenography allows you to type so much faster is because you can press multiple keys at once to form a word, as opposed to typing characters individually. However, Stenography is difficult to learn and even harder to master ([it can take approximately 3 - 6 months to reach ~40 WPM using stenography](https://didoesdigital.com/typey-type/support)) as you have to relearn the keyboard layout, steno theory, shorthands (briefs) and other concepts, and subsequently commit them to muscle memory. This means that stenography has a very high barrier to entry for the layman.
 
