@@ -73,7 +73,9 @@ def Word2Vect(word):
   aOrd = ord('a')
   w = word.lower()
   for c in w:
-    v[ord(c) - aOrd] += 1
+    i = ord(c) - aOrd
+    if i >= 0 and i < NUMBER_OF_ALPHABETS:
+      v[i] += 1
   return v
 
 def Vect2Int(vect):

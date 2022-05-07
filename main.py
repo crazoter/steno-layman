@@ -256,19 +256,27 @@ DISTANCE_HEURISTIC_WEIGHTS = np.array([
   -3, # LCS
   1, # Edit distance (levenshtein)
   2, # First char match
-  2, # Last char match
+  2, # Last char match,
+  -2  # Word frequency 
 ])
 
 def searchBySymSpell(currentWord):
   global sym_spell
   suggestions = sym_spell.lookup(
-    currentWord, Verbosity.CLOSEST, max_edit_distance=SYMSPELL_MAX_EDIT, include_unknown=True
-  )
-  output = None
+    currentWord, Verbosity.CLOSEST, max_edit_distance=SYMSPELL_MAX_EDIT)
+  # Give it some more breadth (for context implementation)
+  # suggestions = suggestions + sym_spell.lookup(
+  #   currentWord, Verbosity.ALL, max_edit_distance=2)
+  # Current word by default
+  output = currentWord
   shortestDistance = None
   # Tiebreak by least amount of characters added / removed
   bestCharDist = None
   matches = []
+  freqSum = 0
+  for suggestion in suggestions:
+    freqSum += suggestion._count
+
   for suggestion in suggestions:
     lcsL, lcsSeq = lcs(currentWord, suggestion.term)
     # Heuristics (in order of priority):
@@ -284,7 +292,8 @@ def searchBySymSpell(currentWord):
       lcsL,
       suggestion.distance,
       0 if currentWord[0] == suggestion.term[0] else 1,
-      0 if currentWord[-1] == suggestion.term[-1] else 1
+      0 if currentWord[-1] == suggestion.term[-1] else 1,
+      suggestion._count / (freqSum * 1.0) * len(suggestions)
     ])
     matches.append((suggestion.term, distances))
     distance = np.sum(distances * DISTANCE_HEURISTIC_WEIGHTS)
@@ -292,6 +301,7 @@ def searchBySymSpell(currentWord):
     if shortestDistance == None or distance < shortestDistance:
       shortestDistance = distance
       output = suggestion.term
+
   return (matches, output)
 
 def findMatchesAndWord(s):
@@ -379,7 +389,9 @@ def initDict():
     dic2Cluster(d)
   if CURRENT_SEARCH_ALGORITHM == SEARCH_ALGORITHM.SYM_SPELL:
     sym_spell = SymSpell(max_dictionary_edit_distance=SYMSPELL_MAX_EDIT)
-    sym_spell.create_dictionary("DL.txt")
+    # https://symspellpy.readthedocs.io/en/latest/api/symspellpy.html#symspellpy.symspellpy.SymSpell.load_dictionary
+    # sym_spell.create_dictionary("frequency_dictionary_en_82_765.txt")
+    sym_spell.load_dictionary("frequency_dictionary_en_82_765.txt", 0, 1)
 
 def main():
   global listener
