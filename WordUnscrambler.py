@@ -51,6 +51,8 @@ def prepareMaps():
 # VECT_MULT_MAP, MAX_SUPPORTED_DUPES = prepareVectMap()
 VECT_MAP, BIT_MASKS = prepareMaps()
 
+ALPHABET_LIST = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
+
 def RemoveFromList(thelist, val):
     return [value for value in thelist if value != val]
 
@@ -67,15 +69,12 @@ def GetDic():
         return 
     
 def Word2Vect(word):
-    l = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
-    v = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-    w = word.lower()
-    wl = list(w)
-    for i in range(0, len(wl)):
-        if wl[i] in l:
-            ind = l.index(wl[i])
-            v[ind] += 1
-    return v
+  v = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+  aOrd = ord('a')
+  w = word.lower()
+  for c in w:
+    v[ord(c) - aOrd] += 1
+  return v
 
 def Vect2Int(vect):
     # return np.dot(np.minimum(vect, MAX_SUPPORTED_DUPES), VECT_MULT_MAP)
@@ -102,7 +101,6 @@ def bitmaskNum(num, id, doShift):
     return num & BIT_MASKS[id]
   return (num & BIT_MASKS[id]) >> (id * 3)
   
-
 def ModifyInt(num, id, val):
   if (val > 0):
     return num + VECT_MAP[id][val]
@@ -138,3 +136,8 @@ def transformWordIntoCluster(word):
   c = kmeans.predict(p)
   print(c.item())
   return clusterMap[c.item()]
+
+def binnedAlphabetDistance(a, b):
+  n1 = Word2Vect(a)
+  n2 = Word2Vect(b)
+  return np.sum(np.abs(n1 - n2))

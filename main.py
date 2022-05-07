@@ -5,6 +5,8 @@ from timeit import default_timer as timer
 from threading import Thread,Event
 from enum import Enum
 from collections import deque
+from symspellpy import SymSpell, Verbosity
+import numpy as np
 
 # https://stackoverflow.com/questions/62854319/how-to-make-pynput-prevent-certain-keystrokes-from-reaching-a-particular-applica
 # https://gist.github.com/chriskiehl/2906125
@@ -22,9 +24,10 @@ from WordUnscrambler import *
 class SEARCH_ALGORITHM(Enum):
   UNSCRAMBLER = 1
   THE_FUZZ = 2
-  CLUSTERING_ONLY = 3
+  CLUSTERING = 3
+  SYM_SPELL = 4
 
-CURRENT_SEARCH_ALGORITHM = SEARCH_ALGORITHM.UNSCRAMBLER
+CURRENT_SEARCH_ALGORITHM = SEARCH_ALGORITHM.SYM_SPELL
 
 class SPACING_MODE(Enum):
   ADD_SPACE = 1 # Default
@@ -36,6 +39,7 @@ class SPACING_MODE(Enum):
 
 MAX_SEARCH_DEPTH = 3
 MAX_DUPE_CHARS = 8
+SYMSPELL_MAX_EDIT = 6
 
 def getCharsSortedByFrequency():
   CHARS = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
@@ -47,31 +51,61 @@ def getCharsSortedByFrequency():
 
 CHARS_BY_FREQUENCY = getCharsSortedByFrequency()
 
-def bfsBinSearch(ind, firstNum, firstDepth):
+def initMatchData(currentWord):
+  return [currentWord, "", None, None]
+
+# matchData = [currentWord, output, shortestDistance, bestCharDist]
+def getBestFromBinSearch(matches, depth, data):
+  if not matches:
+    return
+  # Get best word by Levenshtein distance
+  for s in matches:
+    # Add length to weight (to defray costs of swap; otherwise, ti -> tit over it)
+    currCharDist = abs(len(s) - len(data[0]))
+    distance = Levenshtein.distance(s, data[0]) + currCharDist + depth
+    if distance == data[2] and data[3] > currCharDist:
+      data[3] = currCharDist
+      data[1] = s
+    if data[2] == None or distance < data[2]:
+      data[2] = distance
+      data[3] = currCharDist
+      data[1] = s
+
+def bfsBinSearch(ind, currentWord, firstNum, firstDepth):
   # BFS to ensure when we visit a permutation, it's with the shortest path
-  matches = set(ind.get(firstNum, []))
+  # matches = set(ind.get(firstNum, []))
+  matchData = initMatchData(currentWord)
+  result = ind.get(firstNum)
+  if result:
+    getBestFromBinSearch(result, 0, matchData)
   traversed = set([firstNum])
   q = deque([(firstNum, firstDepth)])
   while len(q) > 0:
     currNum, depth = q.pop()
     for i in range(NUMBER_OF_ALPHABETS):
+      # Add word 
       if bitmaskNum(currNum, i, True) < MAX_DUPE_CHARS:
         newNum = ModifyInt(currNum, i, 1)
         if depth > 0 and newNum not in traversed:
           traversed.add(newNum)
           result = ind.get(newNum)
           if result:
-            matches.update(result)
+            # matches.update(result)
+            getBestFromBinSearch(result, firstDepth + 1 - depth, matchData)
           q.append((newNum, depth - 1))
+      # Remove word
       if bitmaskNum(currNum, i, False) > 0:
         newNum = ModifyInt(currNum, i, -1)
         if depth > 0 and newNum not in traversed:
           traversed.add(newNum)
           result = ind.get(newNum)
           if result:
-            matches.update(result)
+            # matches.update(result)
+            getBestFromBinSearch(result, firstDepth + 1 - depth, matchData)
           q.append((newNum, depth - 1))
-  return matches
+      # Swap word
+  # return matches
+  return matchData
 
 def searchByUnscramble(s):
   global ind
@@ -85,8 +119,10 @@ def searchByUnscramble(s):
   # Remove excess characters 
   currV = Word2Vect(currentWord)
   currNum = Vect2Int(currV)
-  output = ""
-  matches = bfsBinSearch(ind, currNum, 3)
+  # output = ""
+  # matches = bfsBinSearch(ind, currNum, 3)
+  matches = []
+  _, output, success, _ = bfsBinSearch(ind, currentWord, currNum, 3)
 
   # # Optimizations: perform the search without having to rebuild the vector
   # # Possible Heuristics:
@@ -131,9 +167,10 @@ def searchByUnscramble(s):
   #   matches = transformWordIntoCluster(currentWord)
 
   # If still can't find anything just return the word as-is
-  if (len(matches) == 0):
+  # if (len(matches) == 0):
+  if not success:
     output = s
-  else:
+  elif len(matches) > 0:
     # Get best word by Levenshtein distance
     # https://towardsdatascience.com/calculating-string-similarity-in-python-276e18a7d33a
     shortestDistance = None
@@ -176,6 +213,87 @@ def searchByClusteringOnly(currentWord):
       output = s
   return (matches, output)
 
+# DP approach: O(xy)
+# https://github.com/TheAlgorithms/Python/blob/master/dynamic_programming/longest_common_subsequence.py
+def lcs(x: str, y: str):
+    m = len(x)
+    n = len(y)
+
+    L = [[0] * (n + 1) for _ in range(m + 1)]
+
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if x[i - 1] == y[j - 1]:
+                match = 1
+            else:
+                match = 0
+
+            L[i][j] = max(L[i - 1][j], L[i][j - 1], L[i - 1][j - 1] + match)
+
+    seq = ""
+    i, j = m, n
+    while i > 0 and j > 0:
+        if x[i - 1] == y[j - 1]:
+            match = 1
+        else:
+            match = 0
+
+        if L[i][j] == L[i - 1][j - 1] + match:
+            if match == 1:
+                seq = x[i - 1] + seq
+            i -= 1
+            j -= 1
+        elif L[i][j] == L[i - 1][j]:
+            i -= 1
+        else:
+            j -= 1
+
+    return L[m][n], seq
+
+DISTANCE_HEURISTIC_WEIGHTS = np.array([
+  2, # Binned alphabet distance
+  1, # Word length
+  -3, # LCS
+  1, # Edit distance (levenshtein)
+  2, # First char match
+  2, # Last char match
+])
+
+def searchBySymSpell(currentWord):
+  global sym_spell
+  suggestions = sym_spell.lookup(
+    currentWord, Verbosity.CLOSEST, max_edit_distance=SYMSPELL_MAX_EDIT, include_unknown=True
+  )
+  output = None
+  shortestDistance = None
+  # Tiebreak by least amount of characters added / removed
+  bestCharDist = None
+  matches = []
+  for suggestion in suggestions:
+    lcsL, lcsSeq = lcs(currentWord, suggestion.term)
+    # Heuristics (in order of priority):
+    # Binned alphabet distance
+    # Word length
+    # LCS
+    # Edit distance (levenshtein)
+    # First char match
+    # Last char match
+    distances = np.array([
+      binnedAlphabetDistance(currentWord, suggestion.term),
+      abs(len(suggestion.term) - len(currentWord)),
+      lcsL,
+      suggestion.distance,
+      0 if currentWord[0] == suggestion.term[0] else 1,
+      0 if currentWord[-1] == suggestion.term[-1] else 1
+    ])
+    matches.append((suggestion.term, distances))
+    distance = np.sum(distances * DISTANCE_HEURISTIC_WEIGHTS)
+
+    if shortestDistance == None or distance < shortestDistance:
+      shortestDistance = distance
+      output = suggestion.term
+  return (matches, output)
+
 def findMatchesAndWord(s):
   global timeTaken
   # dirty but lazy
@@ -185,8 +303,10 @@ def findMatchesAndWord(s):
     result = searchByUnscramble(s)
   if CURRENT_SEARCH_ALGORITHM == SEARCH_ALGORITHM.THE_FUZZ:
     result = searchByTheFuzz(s)
-  if CURRENT_SEARCH_ALGORITHM == SEARCH_ALGORITHM.CLUSTERING_ONLY:
+  if CURRENT_SEARCH_ALGORITHM == SEARCH_ALGORITHM.CLUSTERING:
     result = searchByClusteringOnly(s)
+  if CURRENT_SEARCH_ALGORITHM == SEARCH_ALGORITHM.SYM_SPELL:
+    result = searchBySymSpell(s)
   end = timer()
   timeTaken = end - start
   return result
@@ -248,11 +368,18 @@ def addWordThread(evt):
 def initDict():
   global d
   global ind
+  global wordCluster
+  global sym_spell
 
   print('Preparing the dictionary...')
-  d = GetDic()
-  ind = Ints2Dic(d)
-  # c = dic2Cluster(d)
+  if CURRENT_SEARCH_ALGORITHM == SEARCH_ALGORITHM.UNSCRAMBLER:
+    d = GetDic()
+    ind = Ints2Dic(d)
+  if CURRENT_SEARCH_ALGORITHM == SEARCH_ALGORITHM.CLUSTERING:
+    dic2Cluster(d)
+  if CURRENT_SEARCH_ALGORITHM == SEARCH_ALGORITHM.SYM_SPELL:
+    sym_spell = SymSpell(max_dictionary_edit_distance=SYMSPELL_MAX_EDIT)
+    sym_spell.create_dictionary("DL.txt")
 
 def main():
   global listener
