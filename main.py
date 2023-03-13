@@ -257,7 +257,7 @@ DISTANCE_HEURISTIC_WEIGHTS = np.array([
   1, # Edit distance (levenshtein)
   2, # First char match
   2, # Last char match,
-  -2  # Word frequency 
+  -2 # Word frequency 
 ])
 
 def searchBySymSpell(currentWord):
@@ -293,7 +293,7 @@ def searchBySymSpell(currentWord):
       suggestion.distance,
       0 if currentWord[0] == suggestion.term[0] else 1,
       0 if currentWord[-1] == suggestion.term[-1] else 1,
-      suggestion._count / (freqSum * 1.0) * len(suggestions)
+      suggestion._count / (freqSum * 1.0) * len(suggestions) # Multiplying by len may cause issues if including breadth
     ])
     matches.append((suggestion.term, distances))
     distance = np.sum(distances * DISTANCE_HEURISTIC_WEIGHTS)
@@ -390,8 +390,8 @@ def initDict():
   if CURRENT_SEARCH_ALGORITHM == SEARCH_ALGORITHM.SYM_SPELL:
     sym_spell = SymSpell(max_dictionary_edit_distance=SYMSPELL_MAX_EDIT)
     # https://symspellpy.readthedocs.io/en/latest/api/symspellpy.html#symspellpy.symspellpy.SymSpell.load_dictionary
-    # sym_spell.create_dictionary("frequency_dictionary_en_82_765.txt")
-    sym_spell.load_dictionary("frequency_dictionary_en_82_765.txt", 0, 1)
+    # sym_spell.create_dictionary("DL.txt")
+    sym_spell.load_dictionary("frequency_dictionary_en_82_765.txt", 0, 1, encoding="utf_8_sig")
 
 def main():
   global listener

@@ -66,13 +66,13 @@ Supplementing the tool to provide the benefit offered by point (3) would require
 	- Pressing space, tab, enter or inputting any non alphabetical symbols will trigger the unscrambling process.
 	- If the input is an anagram, the user will be shown a list of options which they can select by typing a character (representing the word on the left). Note that this list is ordered based on the similarity of the word to the input.
 - Commands:
-	- CTRL + SPACE: Enable / Disable the tool.
+	- ESC: Enable / Disable the tool.
   - CTRL + SHIFT + SPACE: Add a new word to the dictionary.
-  - ESC: Stop the program.
+  - SHIFT + ESC: Exit
 - Other notes & design considerations:
 	- Pressing backspace removes previously input characters (ctrl + backspace removes the whole thing).
 - KIV (unimplemented features):
-	- SHIFT + SPACE: If there is currently no ongoing word, swap the space mode. Otherwise, swaps the space mode only for the next word. 
+	- SHIFT + SPACE: If there is currently no ongoing word, swap the space mode. Otherwise, outputs the word without any conversion.
   - capitalization management: handle & monitor the state of the shift / capslock key accordingly.
   There are the following modes:
 		- Add space (default): Pressing space will trigger the unscrambling process. Afterwhich, a space is added to the end of the word.
